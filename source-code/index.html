@@ -1,0 +1,274 @@
+<html>
+  <head>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
+    <script>
+      AFRAME.registerComponent("kill-zombie", {
+        init: function () {
+          this.attacking = false;
+
+          let ele = this.el;
+          ele.addEventListener(
+            "animation-finished",
+            function (action, direction) {
+              console.log("Animation ended");
+              setTimeout(function () {
+                ele.parentNode.removeChild(ele);
+              }, 1000);
+            }
+          );
+
+          ele.addEventListener("mousedown", function (evt) {
+            ele.classList.remove("raycastEntity")
+            ele.setAttribute("animation-mixer", {
+              clip: "FallingBack",
+              clampWhenFinished: true,
+              loop: "once",
+            });
+            ele.removeAttribute("animation");
+            ele.sceneEl.emit("updateKills");
+          });
+        },
+
+        tick: function () {
+          if (!this.attacking) {
+            let target = document
+              .querySelector("#lookAtTarget")
+              .getAttribute("position");
+            let elePos = this.el.getAttribute("position");
+            let distance = target.distanceTo(elePos);
+            if (distance < 0.75) {
+              this.attacking = true;
+              this.el.removeAttribute("animation");
+              this.el.setAttribute("animation-mixer", { clip: "Attack" });
+            }
+          }
+        },
+      });
+
+      AFRAME.registerComponent("game-controller", {
+        init: function () {
+          let killCount = 0;
+          let intset = null;
+          let ref = this;
+          var kll = document.querySelector("#killText");
+          this.el.sceneEl.addEventListener("updateKills", function () {
+            killCount += 1;
+            let kilC = "Kills : " + killCount;
+            kll.setAttribute("text", { value: kilC });
+            if (killCount == 10) {
+              document
+                .querySelector("#youWinText")
+                .setAttribute("visible", true);
+              clearInterval(intSet);
+            }
+          });
+
+          let playButtona = document.querySelector("#playBut");
+          playButtona.addEventListener("mousedown", function (evt) {
+            console.log("Clicking button");
+            // playButtona.setAttribute("visible", false);
+            playButtona.parentNode.removeChild(playButtona);
+            document
+              .querySelector("#ShowZombie")
+              .setAttribute("visible", false);
+            document.querySelector("#killText").setAttribute("visible", true);
+
+            intSet = setInterval(function () {
+              ref.Spawnz();
+            }, 3000);
+          });
+
+          this.el.addEventListener("mousedown", function (evt) {
+            var entity = document.querySelector("#sound");
+            entity.components.sound.stopSound();
+            entity.components.sound.playSound();
+            var muzz = document.querySelector("#muzzleImg");
+            muzz.setAttribute("visible", true);
+            setTimeout(function () {
+              muzz.setAttribute("visible", false);
+            }, 100);
+          });
+        },
+        Spawnz: function () {
+          const scene = document.querySelector("a-scene");
+          const box = document.createElement("a-entity");
+
+          //box.setAttribute("rotation", "0 90 0");
+          box.setAttribute("gltf-model", "#zombie");
+          let rand = Math.floor(Math.random() * 360);
+          y = 4 * Math.sin(rand);
+          x = 4 * Math.cos(rand);
+          let pos = x + " 0 " + y;
+          box.setAttribute("scale", "0.5 0.5 0.5");
+          box.setAttribute("position", pos);
+          box.setAttribute("look-at", "#lookAtTarget");
+          box.classList.add("raycastEntity");
+          box.setAttribute("animation-mixer", {
+            clip: "Walk_InPlace",
+          });
+          box.setAttribute("kill-zombie", "");
+          box.setAttribute("animation", {
+            property: "position",
+            to: "0 0 0",
+            dur: 20000,
+            easing: "linear",
+          });
+          const so = document.createElement("a-entity");
+          so.setAttribute("sound", {
+            src: "#growlingSound",
+            autoplay: true,
+            loop: true,
+          });
+
+          box.appendChild(so);
+          scene.appendChild(box);
+        },
+      });
+    </script>
+  </head>
+  <body>
+    <a-scene game-controller vr-mode-ui="cardboardModeEnabled: true">
+      <a-assets>
+        <img
+          crossorigin="anonymous"
+          id="city"
+          src="assets/background360.jpeg"
+        />
+        <img
+          crossorigin="anonymous"
+          id="playButton"
+          src="assets/play.png"
+        />
+        <img
+          crossorigin="anonymous"
+          id="muzzleImage"
+          src="assets/muzzle.png"
+        />
+
+        <audio
+          id="growlingSound"
+          src="assets/growling.mp3"
+          preload="auto"
+        ></audio>
+
+        <!-- <img
+          crossorigin="anonymous"
+          id="texture"
+          src="https://cdn.glitch.global/30af1d3b-4338-4f4a-a826-359ed81189cf/balldimpled.png?v=1678575879899"
+        /> -->
+        <a-asset-item
+          id="zombie"
+          src="assets/zombie.glb"
+          response-type="arraybuffer"
+        ></a-asset-item>
+        <a-asset-item
+          id="gun"
+          src="assets/pistol.glb"
+          response-type="arraybuffer"
+        ></a-asset-item>
+        <a-asset-item
+          id="tower"
+          src="assets/handpainted_tower.glb"
+          response-type="arraybuffer"
+        ></a-asset-item>
+
+        <audio
+          id="bulletSound"
+          src="assets/bulletAudio.mp3"
+          preload="auto"
+        ></audio>
+  
+      </a-assets>
+      <a-entity id="lookAtTarget" position="0 0 0"></a-entity>
+
+      <a-entity
+        id="towers"
+        position="0 -0.5 0"
+        rotation=""
+        gltf-model="#tower"
+        scale="1.5 1.5 1.5"
+      >
+      </a-entity>
+      <a-entity position="0 1 0" id="mainCamera" camera look-controls>
+        <a-entity
+          id="youWinText"
+          visible="false"
+          position="1.65 0.2 -1"
+          text="font: mozillavr;value: You Win!;color: #FF0"
+          scale="4 4 4"
+        ></a-entity>
+
+        <a-entity
+          cursor
+          raycaster="far: 50; interval: 500; objects: .raycastEntity"
+          position="0 0 -0.5"
+          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+          material="color: black; shader: flat"
+        ></a-entity>
+
+        <a-entity
+          id="gunModel"
+          position="0.27006 -0.20183 -0.13237"
+          rotation="7.75 8.84 0"
+          gltf-model="#gun"
+          scale="0.01 0.01 0.01"
+        >
+          <a-image
+            visible="false"
+            id="muzzleImg"
+            src="#muzzleImage"
+            position="-1.07686 7.0834 -20.3587"
+            material=""
+            geometry=""
+            scale="10 10 10"
+            rotation="0 90 -0.01"
+          ></a-image>
+          <a-entity
+            id="sound"
+            sound="src: #bulletSound"
+          >
+          </a-entity>
+        </a-entity>
+      </a-entity>
+      <a-entity
+        light="type: ambient; color: #FFF; distance: 0; intensity: 3"
+      ></a-entity>
+      <a-entity
+        position="11 3 -7"
+        text="font: mozillavr;value: Zombie Slayer;color: #FF0"
+        scale="30 30 30"
+      ></a-entity>
+      <a-entity
+        id="killText"
+        visible="false"
+        position="7 1.5 -7"
+        text="font: mozillavr;value: Kills : 0;color: #FF0"
+        scale="17 17 1"
+      ></a-entity>
+      <a-image
+        id="playBut"
+        class="raycastEntity"
+        src="#playButton"
+        position="1 1 -7"
+        scale="1.5 1 1.5"
+      ></a-image>
+      <a-sky radius="10" src="#city"></a-sky>
+<!--       <a-entity position="0 0 0" rotation="0 0 0"> </a-entity> -->
+      <a-entity
+        look-at="#mainCamera"
+        id="ShowZombie"
+        position="-2 -1 -7"
+        rotation="0 0 0"
+        scale="1.5 1.5 1.5"
+        gltf-model="#zombie"
+        animation-mixer="clip: Attack"
+      ></a-entity>
+
+      <a-entity light="type:directional;color:#666" position="0 0 0"></a-entity>
+    </a-scene>
+  </body>
+</html>
+
