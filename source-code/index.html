@@ -1,274 +1,286 @@
 <html>
-  <head>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
-    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
-    <script>
-      AFRAME.registerComponent("kill-zombie", {
-        init: function () {
-          this.attacking = false;
 
-          let ele = this.el;
-          ele.addEventListener(
-            "animation-finished",
-            function (action, direction) {
-              console.log("Animation ended");
-              setTimeout(function () {
-                ele.parentNode.removeChild(ele);
-              }, 1000);
-            }
-          );
+<head>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.8thwall.com/web/aframe/aframe-extras-6.1.1.min.js"></script>
+  <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
 
-          ele.addEventListener("mousedown", function (evt) {
-            ele.classList.remove("raycastEntity")
-            ele.setAttribute("animation-mixer", {
-              clip: "FallingBack",
-              clampWhenFinished: true,
-              loop: "once",
-            });
-            ele.removeAttribute("animation");
-            ele.sceneEl.emit("updateKills");
-          });
-        },
+  <script>
+    // Component that controls the behavior of the zombie
+    AFRAME.registerComponent("kill-zombie", {
+      init: function () {
+        // State to track if the zombie is attacking
+        this.attacking = false;
 
-        tick: function () {
-          if (!this.attacking) {
-            let target = document
-              .querySelector("#lookAtTarget")
-              .getAttribute("position");
-            let elePos = this.el.getAttribute("position");
-            let distance = target.distanceTo(elePos);
-            if (distance < 0.75) {
-              this.attacking = true;
-              this.el.removeAttribute("animation");
-              this.el.setAttribute("animation-mixer", { clip: "Attack" });
-            }
-          }
-        },
-      });
+        let ele = this.el;
 
-      AFRAME.registerComponent("game-controller", {
-        init: function () {
-          let killCount = 0;
-          let intset = null;
-          let ref = this;
-          var kll = document.querySelector("#killText");
-          this.el.sceneEl.addEventListener("updateKills", function () {
-            killCount += 1;
-            let kilC = "Kills : " + killCount;
-            kll.setAttribute("text", { value: kilC });
-            if (killCount == 10) {
-              document
-                .querySelector("#youWinText")
-                .setAttribute("visible", true);
-              clearInterval(intSet);
-            }
-          });
-
-          let playButtona = document.querySelector("#playBut");
-          playButtona.addEventListener("mousedown", function (evt) {
-            console.log("Clicking button");
-            // playButtona.setAttribute("visible", false);
-            playButtona.parentNode.removeChild(playButtona);
-            document
-              .querySelector("#ShowZombie")
-              .setAttribute("visible", false);
-            document.querySelector("#killText").setAttribute("visible", true);
-
-            intSet = setInterval(function () {
-              ref.Spawnz();
-            }, 3000);
-          });
-
-          this.el.addEventListener("mousedown", function (evt) {
-            var entity = document.querySelector("#sound");
-            entity.components.sound.stopSound();
-            entity.components.sound.playSound();
-            var muzz = document.querySelector("#muzzleImg");
-            muzz.setAttribute("visible", true);
+        // Delete the zombie from the scene when its death animation finishes
+        ele.addEventListener(
+          "animation-finished",
+          function (action, direction) {
+            console.log("Animation ended"); // Log when the animation ends for debugging purposes
             setTimeout(function () {
-              muzz.setAttribute("visible", false);
-            }, 100);
-          });
-        },
-        Spawnz: function () {
-          const scene = document.querySelector("a-scene");
-          const box = document.createElement("a-entity");
+              ele.parentNode.removeChild(ele); // Remove the zombie entity from the scene after a delay
+            }, 1000); // Delay before removing the zombie entity
+          }
+        );
 
-          //box.setAttribute("rotation", "0 90 0");
-          box.setAttribute("gltf-model", "#zombie");
-          let rand = Math.floor(Math.random() * 360);
-          y = 4 * Math.sin(rand);
-          x = 4 * Math.cos(rand);
-          let pos = x + " 0 " + y;
-          box.setAttribute("scale", "0.5 0.5 0.5");
-          box.setAttribute("position", pos);
-          box.setAttribute("look-at", "#lookAtTarget");
-          box.classList.add("raycastEntity");
-          box.setAttribute("animation-mixer", {
-            clip: "Walk_InPlace",
-          });
-          box.setAttribute("kill-zombie", "");
-          box.setAttribute("animation", {
-            property: "position",
-            to: "0 0 0",
-            dur: 20000,
-            easing: "linear",
-          });
-          const so = document.createElement("a-entity");
-          so.setAttribute("sound", {
-            src: "#growlingSound",
-            autoplay: true,
-            loop: true,
+        // Check if the zombie has been clicked
+        ele.addEventListener("mousedown", function (evt) {
+          // Remove raycast class to prevent multiple clicks on the same zombie
+          ele.classList.remove("raycastEntity");
+          // Trigger the falling animation
+          ele.setAttribute("animation-mixer", {
+            clip: "FallingBack", // Set animation clip to "FallingBack"
+            clampWhenFinished: true, // Ensure animation stops at the last frame
+            loop: "once", // Play the animation only once
           });
 
-          box.appendChild(so);
-          scene.appendChild(box);
-        },
-      });
-    </script>
-  </head>
-  <body>
-    <a-scene game-controller vr-mode-ui="cardboardModeEnabled: true">
-      <a-assets>
-        <img
-          crossorigin="anonymous"
-          id="city"
-          src="assets/background360.jpeg"
-        />
-        <img
-          crossorigin="anonymous"
-          id="playButton"
-          src="assets/play.png"
-        />
-        <img
-          crossorigin="anonymous"
-          id="muzzleImage"
-          src="assets/muzzle.png"
-        />
+          // Remove the walking animation
+          ele.removeAttribute("animation");
+          // Emit an event to update the kill count
+          ele.sceneEl.emit("updateKills");
+        });
+      },
+      // Tick handler is called 60-120 times per second
+      tick: function () {
+        // Check if the zombie is not already attacking
+        if (!this.attacking) {
+          // Get the position of the user (target)
+          let target = document
+            .querySelector("#lookAtTarget")
+            .getAttribute("position");
 
-        <audio
-          id="growlingSound"
-          src="assets/growling.mp3"
-          preload="auto"
-        ></audio>
+          // Get the current position of the zombie
+          let elePos = this.el.getAttribute("position");
 
-        <!-- <img
-          crossorigin="anonymous"
-          id="texture"
-          src="https://cdn.glitch.global/30af1d3b-4338-4f4a-a826-359ed81189cf/balldimpled.png?v=1678575879899"
-        /> -->
-        <a-asset-item
-          id="zombie"
-          src="assets/zombie.glb"
-          response-type="arraybuffer"
-        ></a-asset-item>
-        <a-asset-item
-          id="gun"
-          src="assets/pistol.glb"
-          response-type="arraybuffer"
-        ></a-asset-item>
-        <a-asset-item
-          id="tower"
-          src="assets/handpainted_tower.glb"
-          response-type="arraybuffer"
-        ></a-asset-item>
+          // Calculate the distance between the zombie and the user
+          let distance = target.distanceTo(elePos);
 
-        <audio
-          id="bulletSound"
-          src="assets/bulletAudio.mp3"
-          preload="auto"
-        ></audio>
-  
-      </a-assets>
-      <a-entity id="lookAtTarget" position="0 0 0"></a-entity>
+          // If the user is close enough, start the attack
+          if (distance < 0.75) {
+            this.attacking = true;
 
-      <a-entity
-        id="towers"
-        position="0 -0.5 0"
-        rotation=""
-        gltf-model="#tower"
-        scale="1.5 1.5 1.5"
-      >
+            // Remove the walking animation
+            this.el.removeAttribute("animation");
+
+            // Trigger the attack animation
+            this.el.setAttribute("animation-mixer", { clip: "Attack" });
+          }
+        }
+      },
+    });
+
+    // Component that controls the flow of the game
+    AFRAME.registerComponent("game-controller", {
+      init: function () {
+        let killCount = 0;
+        let intSet = null; // Variable to store the interval ID for zombie spawning
+
+        // Reference to the current entity
+        let ref = this;
+
+        // Reference to the text element that holds the kill count
+        var kll = document.querySelector("#killText");
+
+        // Add an event listener to update the kill count when a zombie is killed
+        this.el.sceneEl.addEventListener("updateKills", function () {
+          killCount += 1; // Increment kill count
+          let kilC = "Kills : " + killCount; // Construct the updated kill count text
+          // Update the text element with the new kill count
+          kll.setAttribute("text", { value: kilC });
+          // End the game when the kill count reaches 10
+          if (killCount >= 10) {
+            document
+              .querySelector("#youWinText")
+              .setAttribute("visible", true); // Show the "You Win" text
+            clearInterval(intSet); // Stop spawning zombies
+          }
+        });
+
+        // Reference to the play button
+        let playButtona = document.querySelector("#playBut");
+        playButtona.addEventListener("mousedown", function (evt) {
+          // UI changes when the play button is clicked
+          playButtona.parentNode.removeChild(playButtona); // Remove the play button from the scene
+          document
+            .querySelector("#ShowZombie")
+            .setAttribute("visible", false); // Hide the initial zombie
+          document.querySelector("#killText").setAttribute("visible", true); // Show the kill count text
+
+          // Start spawning zombies every 3 seconds
+          intSet = setInterval(function () {
+            ref.Spawnz();
+          }, 3000); // Spawns zombies every 3 seconds
+        });
+
+        // Add an event listener to play the gunshot sound and show the muzzle flash when the scene is clicked
+        this.el.addEventListener("mousedown", function (evt) {
+          var entity = document.querySelector("#sound");
+          entity.components.sound.stopSound(); // Stop any currently playing sound
+          entity.components.sound.playSound(); // Play the gunshot sound
+          var muzz = document.querySelector("#muzzleImg");
+          muzz.setAttribute("visible", true); // Show the muzzle flash
+          setTimeout(function () {
+            muzz.setAttribute("visible", false); // Hide the muzzle flash after a short delay
+          }, 100); // Delay for muzzle flash visibility
+        });
+      },
+
+      // Method to spawn a zombie into the scene
+      Spawnz: function () {
+        // Reference to the scene
+        const scene = document.querySelector("a-scene");
+
+        // Create an empty entity for the zombie
+        const zombie_entity = document.createElement("a-entity");
+
+        // Add the zombie model
+        zombie_entity.setAttribute("gltf-model", "#zombie");
+
+        // Get random coordinates to spawn the zombie in a circle
+        let rand = Math.floor(Math.random() * 360); // Generate a random angle
+        y = 4 * Math.sin(rand); // Calculate y-coordinate
+        x = 4 * Math.cos(rand); // Calculate x-coordinate
+        let pos = x + " 0 " + y; // Construct position string
+        zombie_entity.setAttribute("scale", "0.5 0.5 0.5"); // Set the scale of the zombie
+        zombie_entity.setAttribute("position", pos); // Set the position of the zombie
+
+        // Ensure the zombie looks at the user
+        zombie_entity.setAttribute("look-at", "#lookAtTarget");
+
+        // Allow the zombie to be raycasted
+        zombie_entity.classList.add("raycastEntity");
+
+        // Add the default (walking) animation to the zombie
+        zombie_entity.setAttribute("animation-mixer", {
+          clip: "Walk_InPlace", // Set the walking animation clip
+        });
+
+        // Add the component that controls the zombie's behavior
+        zombie_entity.setAttribute("kill-zombie", "");
+
+        // Add an animation to move the zombie towards the user
+        zombie_entity.setAttribute("animation", {
+          property: "position", // Animate the position property
+          to: "0 0 0", // Move towards the center (user)
+          dur: 20000, // Duration of 20 seconds
+          easing: "linear", // Linear easing for constant speed
+        });
+
+        // Create a sound entity for zombie growling
+        const zombie_sound = document.createElement("a-entity");
+        zombie_sound.setAttribute("sound", {
+          src: "#growlingSound", // Set the source of the growling sound
+          autoplay: true, // Start playing immediately
+          loop: true, // Loop the sound continuously
+        });
+
+        // Attach the sound to the zombie entity
+        zombie_entity.appendChild(zombie_sound);
+
+        // Add the zombie entity to the scene
+        scene.appendChild(zombie_entity);
+      },
+    });
+  </script>
+</head>
+
+<body>
+  <a-scene game-controller vr-mode-ui="cardboardModeEnabled: true">
+    <!--   Asset Management    -->
+    <a-assets>
+      <audio id="bulletSound"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/bulletAudio.mp3?v=1730615164370"
+        preload="auto"></audio>
+
+      <a-asset-item id="zombie"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/zombie.glb?v=1730616877675"
+        response-type="arraybuffer"></a-asset-item>
+
+      <img crossorigin="anonymous" id="city"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/background360.jpeg?v=1730617237411" />
+
+      <img crossorigin="anonymous" id="playButton"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/play.png?v=1730617611215" />
+
+      <a-asset-item id="gun"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/pistol.glb?v=1730618114557"
+        response-type="arraybuffer"></a-asset-item>
+
+      <a-asset-item id="tower"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/handpainted_tower.glb?v=1730618060959"
+        response-type="arraybuffer"></a-asset-item>
+
+      <img crossorigin="anonymous" id="muzzleImage"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/muzzle.png?v=1730618070895" />
+
+      <audio id="growlingSound"
+        src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/growling.mp3?v=1730618044155"
+        preload="auto"></audio>
+
+    </a-assets>
+    
+    <!-- The 360 background -->
+    <a-sky radius="10" src="#city"></a-sky>
+
+    <!-- Reference to the position of the user -->
+    <a-entity id="lookAtTarget" position="0 0 0"></a-entity>
+
+    <!-- Main camera -->
+    <a-entity position="0 1 0" id="mainCamera" camera look-controls>
+      
+      <!-- Cursor entity -->
+      <a-entity cursor raycaster="far: 100; objects: .raycastEntity" position="0 0 -0.5"
+        geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+        material="color: black; shader: flat"></a-entity>
+
+      <!-- Gun 3D Model -->
+      <a-entity id="gunModel" position="0.27006 -0.20183 -0.13237" rotation="7.75 8.84 0" gltf-model="#gun"
+        scale="0.01 0.01 0.01"> </a-entity>
+      
+      <!-- Muzzle effect image -->
+      <a-image visible="false" id="muzzleImg" src="#muzzleImage" position="-1.07686 7.0834 -20.3587" material=""
+        geometry="" scale="10 10 10" rotation="0 90 -0.01"></a-image>
+      
+      <!-- Gunshot sound  -->
+      <a-entity id="sound" sound="src: #bulletSound;  poolSize: 10">
       </a-entity>
-      <a-entity position="0 1 0" id="mainCamera" camera look-controls>
-        <a-entity
+      
+<!--      You win text  -->
+           <a-entity
           id="youWinText"
           visible="false"
           position="1.65 0.2 -1"
           text="font: mozillavr;value: You Win!;color: #FF0"
           scale="4 4 4"
         ></a-entity>
+    </a-entity>
 
-        <a-entity
-          cursor
-          raycaster="far: 50; interval: 500; objects: .raycastEntity"
-          position="0 0 -0.5"
-          geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
-          material="color: black; shader: flat"
-        ></a-entity>
+    <!-- The Demo zombie at the beginning -->
+    <a-entity id="ShowZombie" look-at="#mainCamera" position="-2 -1 -7" rotation="0 0 0" scale="1.5 1.5 1.5"
+      gltf-model="#zombie" animation-mixer="clip: Attack"></a-entity>
+    
+    <!-- Main Text -->
+    <a-entity position="11 3 -7" text="font: mozillavr;value: Zombie Slayer;color: #FF0" scale="30 30 30"></a-entity>
+    
+    <!-- Kill count Text -->
+    <a-entity id="killText" visible="false" position="7 1.5 -7" text="font: mozillavr;value: Kills : 0;color: #FF0"
+      scale="17 17 1"></a-entity>
+ 
+    <!-- Play button -->
+    <a-image id="playBut" class="raycastEntity" src="#playButton" position="1 1 -7" scale="1.5 1 1.5"></a-image>
+      
+    <!-- 3D Model for tower on which the user is standing -->
+    <a-entity id="towers" position="0 -0.5 0" rotation="" gltf-model="#tower" scale="1.5 1.5 1.5">
+    </a-entity>
 
-        <a-entity
-          id="gunModel"
-          position="0.27006 -0.20183 -0.13237"
-          rotation="7.75 8.84 0"
-          gltf-model="#gun"
-          scale="0.01 0.01 0.01"
-        >
-          <a-image
-            visible="false"
-            id="muzzleImg"
-            src="#muzzleImage"
-            position="-1.07686 7.0834 -20.3587"
-            material=""
-            geometry=""
-            scale="10 10 10"
-            rotation="0 90 -0.01"
-          ></a-image>
-          <a-entity
-            id="sound"
-            sound="src: #bulletSound"
-          >
-          </a-entity>
-        </a-entity>
-      </a-entity>
-      <a-entity
+<!--    Add light in the scene-->
+              <a-entity
         light="type: ambient; color: #FFF; distance: 0; intensity: 3"
       ></a-entity>
-      <a-entity
-        position="11 3 -7"
-        text="font: mozillavr;value: Zombie Slayer;color: #FF0"
-        scale="30 30 30"
-      ></a-entity>
-      <a-entity
-        id="killText"
-        visible="false"
-        position="7 1.5 -7"
-        text="font: mozillavr;value: Kills : 0;color: #FF0"
-        scale="17 17 1"
-      ></a-entity>
-      <a-image
-        id="playBut"
-        class="raycastEntity"
-        src="#playButton"
-        position="1 1 -7"
-        scale="1.5 1 1.5"
-      ></a-image>
-      <a-sky radius="10" src="#city"></a-sky>
-<!--       <a-entity position="0 0 0" rotation="0 0 0"> </a-entity> -->
-      <a-entity
-        look-at="#mainCamera"
-        id="ShowZombie"
-        position="-2 -1 -7"
-        rotation="0 0 0"
-        scale="1.5 1.5 1.5"
-        gltf-model="#zombie"
-        animation-mixer="clip: Attack"
-      ></a-entity>
+  </a-scene>
+</body>
 
-      <a-entity light="type:directional;color:#666" position="0 0 0"></a-entity>
-    </a-scene>
-  </body>
 </html>
-

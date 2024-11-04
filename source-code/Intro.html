@@ -1,0 +1,42 @@
+<html>
+
+<head>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script>
+        AFRAME.registerComponent('play-sound-on-click', {
+            init: function () {
+                this.el.addEventListener('click', () => {
+                    const soundEntity = document.querySelector('#sound');
+                    soundEntity.components.sound.playSound();
+                });
+            }
+        });
+    </script>
+</head>
+
+<body>
+    <a-scene game-controller vr-mode-ui="cardboardModeEnabled: true">
+        <a-assets>
+
+            <audio id="bulletSound"
+                src="https://cdn.glitch.global/96e20926-f07c-4b2c-9a80-f29a84003d4c/bulletAudio.mp3?v=1730615164370"
+                preload="auto"></audio>
+
+        </a-assets>
+        <a-sky radius="10" color="#990"></a-sky>
+
+        <a-box class="raycastEntity" position="-1 0.5 -3" rotation="0 45
+0" color="#4CC3D9" play-sound-on-click></a-box>
+        <a-entity position="0 1 0" id="mainCamera" camera look-controls>
+
+            <a-entity cursor raycaster="far: 100; objects: .raycastEntity" position="0 0 -0.5"
+                geometry="primitive: ring; radiusInner: 0.005; radiusOuter: 0.01"
+                material="color: black; shader: flat"></a-entity>
+        </a-entity>
+
+        <a-entity id="sound" sound="src: #bulletSound; poolSize: 10" />
+    </a-scene>
+</body>
+
+</html>
